@@ -121,6 +121,55 @@ struct DashboardStats: Codable {
     let averageDurationMs: Double
     let rpm: Int
     let tpm: Int
+    let byPlatform: [DashboardPlatformStats]
+
+    init(
+        totalApiKeys: Int,
+        activeApiKeys: Int,
+        totalRequests: Int,
+        totalInputTokens: Int,
+        totalOutputTokens: Int,
+        totalCacheCreationTokens: Int,
+        totalCacheReadTokens: Int,
+        totalTokens: Int,
+        totalCost: Double,
+        totalActualCost: Double,
+        todayRequests: Int,
+        todayInputTokens: Int,
+        todayOutputTokens: Int,
+        todayCacheCreationTokens: Int,
+        todayCacheReadTokens: Int,
+        todayTokens: Int,
+        todayCost: Double,
+        todayActualCost: Double,
+        averageDurationMs: Double,
+        rpm: Int,
+        tpm: Int,
+        byPlatform: [DashboardPlatformStats] = []
+    ) {
+        self.totalApiKeys = totalApiKeys
+        self.activeApiKeys = activeApiKeys
+        self.totalRequests = totalRequests
+        self.totalInputTokens = totalInputTokens
+        self.totalOutputTokens = totalOutputTokens
+        self.totalCacheCreationTokens = totalCacheCreationTokens
+        self.totalCacheReadTokens = totalCacheReadTokens
+        self.totalTokens = totalTokens
+        self.totalCost = totalCost
+        self.totalActualCost = totalActualCost
+        self.todayRequests = todayRequests
+        self.todayInputTokens = todayInputTokens
+        self.todayOutputTokens = todayOutputTokens
+        self.todayCacheCreationTokens = todayCacheCreationTokens
+        self.todayCacheReadTokens = todayCacheReadTokens
+        self.todayTokens = todayTokens
+        self.todayCost = todayCost
+        self.todayActualCost = todayActualCost
+        self.averageDurationMs = averageDurationMs
+        self.rpm = rpm
+        self.tpm = tpm
+        self.byPlatform = byPlatform
+    }
 
     enum CodingKeys: String, CodingKey {
         case totalApiKeys = "total_api_keys"
@@ -143,6 +192,56 @@ struct DashboardStats: Codable {
         case todayActualCost = "today_actual_cost"
         case averageDurationMs = "average_duration_ms"
         case rpm, tpm
+        case byPlatform = "by_platform"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            totalApiKeys: try c.decode(Int.self, forKey: .totalApiKeys),
+            activeApiKeys: try c.decode(Int.self, forKey: .activeApiKeys),
+            totalRequests: try c.decode(Int.self, forKey: .totalRequests),
+            totalInputTokens: try c.decode(Int.self, forKey: .totalInputTokens),
+            totalOutputTokens: try c.decode(Int.self, forKey: .totalOutputTokens),
+            totalCacheCreationTokens: try c.decode(Int.self, forKey: .totalCacheCreationTokens),
+            totalCacheReadTokens: try c.decode(Int.self, forKey: .totalCacheReadTokens),
+            totalTokens: try c.decode(Int.self, forKey: .totalTokens),
+            totalCost: try c.decode(Double.self, forKey: .totalCost),
+            totalActualCost: try c.decode(Double.self, forKey: .totalActualCost),
+            todayRequests: try c.decode(Int.self, forKey: .todayRequests),
+            todayInputTokens: try c.decode(Int.self, forKey: .todayInputTokens),
+            todayOutputTokens: try c.decode(Int.self, forKey: .todayOutputTokens),
+            todayCacheCreationTokens: try c.decode(Int.self, forKey: .todayCacheCreationTokens),
+            todayCacheReadTokens: try c.decode(Int.self, forKey: .todayCacheReadTokens),
+            todayTokens: try c.decode(Int.self, forKey: .todayTokens),
+            todayCost: try c.decode(Double.self, forKey: .todayCost),
+            todayActualCost: try c.decode(Double.self, forKey: .todayActualCost),
+            averageDurationMs: try c.decode(Double.self, forKey: .averageDurationMs),
+            rpm: try c.decode(Int.self, forKey: .rpm),
+            tpm: try c.decode(Int.self, forKey: .tpm),
+            byPlatform: try c.decodeIfPresent([DashboardPlatformStats].self, forKey: .byPlatform) ?? []
+        )
+    }
+}
+
+struct DashboardPlatformStats: Codable, Identifiable {
+    var id: String { platform }
+    let platform: String
+    let totalRequests: Int
+    let totalTokens: Int
+    let totalActualCost: Double
+    let todayRequests: Int
+    let todayTokens: Int
+    let todayActualCost: Double
+
+    enum CodingKeys: String, CodingKey {
+        case platform
+        case totalRequests = "total_requests"
+        case totalTokens = "total_tokens"
+        case totalActualCost = "total_actual_cost"
+        case todayRequests = "today_requests"
+        case todayTokens = "today_tokens"
+        case todayActualCost = "today_actual_cost"
     }
 }
 

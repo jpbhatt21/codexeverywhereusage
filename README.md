@@ -93,7 +93,6 @@ Sources/
 | `GET /api/v1/auth/me` | Current user info |
 | `GET /api/v1/usage/dashboard/stats` | All-time and today's stats |
 | `GET /api/v1/usage/dashboard/trend` | 7-day spending trend |
-| `GET /api/v1/user/platform-quotas` | Daily/monthly spend limits |
 | `GET /api/v1/usage` | Recent API requests |
 
 ## Requirements

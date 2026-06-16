@@ -143,25 +143,48 @@ struct MenuBarView: View {
                 .font(.caption.bold()).foregroundStyle(.secondary)
 
             HStack(spacing: 0) {
-                spendCell("Today", vm.dailySpend, color: .orange)
-                Divider().frame(height: 36)
-                spendCell("This Month", vm.monthlySpend, color: .blue)
-                Divider().frame(height: 36)
-                spendCell("All Time", vm.stats.totalActualCost, color: .green)
+                costCell("Today Cost", actual: vm.stats.todayActualCost, list: vm.stats.todayCost, color: .orange)
+                Divider().frame(height: 48)
+                tokenCell("Token Usage", today: vm.stats.todayTokens, total: vm.stats.totalTokens, color: .purple)
+                Divider().frame(height: 48)
+                costCell("Total Cost", actual: vm.stats.totalActualCost, list: vm.stats.totalCost, color: .green)
             }
             .padding(10)
             .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.04)))
         }
     }
 
-    private func spendCell(_ label: String, _ value: Double, color: Color) -> some View {
-        VStack(spacing: 2) {
+    private func costCell(_ label: String, actual: Double, list: Double, color: Color) -> some View {
+        VStack(spacing: 3) {
             Text(label).font(.caption2).foregroundStyle(.secondary)
-            Text(String(format: "$%.4f", value))
+            Text(String(format: "$%.4f", actual))
                 .font(.callout.bold().monospacedDigit())
                 .foregroundStyle(color)
                 .contentTransition(.numericText())
-                .animation(.snappy, value: value)
+                .animation(.snappy, value: actual)
+            Text(String(format: "$%.4f", list))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .strikethrough(true, color: .secondary)
+                .contentTransition(.numericText())
+                .animation(.snappy, value: list)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func tokenCell(_ label: String, today: Int, total: Int, color: Color) -> some View {
+        VStack(spacing: 3) {
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+            Text(fmtTokens(today))
+                .font(.callout.bold().monospacedDigit())
+                .foregroundStyle(color)
+                .contentTransition(.numericText())
+                .animation(.snappy, value: today)
+            Text(fmtTokens(total))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .contentTransition(.numericText())
+                .animation(.snappy, value: total)
         }
         .frame(maxWidth: .infinity)
     }
@@ -326,12 +349,8 @@ class MenuBarViewModel: ObservableObject {
     )
     @Published var recentItems: [UsageItem] = []
     @Published var trend: [TrendDay] = []
-    @Published var quotas: [PlatformQuota] = []
     @Published var lastUpdated = ""
     @Published var isRefreshing = false
-
-    var dailySpend: Double { quotas.first?.dailyUsageUsd ?? stats.todayActualCost }
-    var monthlySpend: Double { quotas.first?.monthlyUsageUsd ?? 0 }
 
     var cacheHitRate: String {
         let total = stats.todayCacheReadTokens + stats.todayInputTokens
@@ -384,16 +403,14 @@ class MenuBarViewModel: ObservableObject {
             async let b = api.getDashboardStats(token: token)
             async let c = api.getUsageList(start: today, end: today, page: 1, pageSize: 10, token: token)
             async let d = api.getTrend(start: start, end: today, token: token)
-            async let e = api.getPlatformQuotas(token: token)
 
-            let (auth, dash, recent, trendData, quotaData) = try await (a, b, c, d, e)
+            let (auth, dash, recent, trendData) = try await (a, b, c, d)
 
             email = auth.email
             balance = auth.balance
             stats = dash
             recentItems = recent.items
             trend = trendData
-            quotas = quotaData
 
             let fmt = DateFormatter(); fmt.dateFormat = "HH:mm"
             lastUpdated = fmt.string(from: Date())
@@ -413,8 +430,6 @@ class MenuBarViewModel: ObservableObject {
            let v = try? JSONDecoder().decode([UsageItem].self, from: data) { recentItems = v }
         if let data = d.data(forKey: "c_trend"),
            let v = try? JSONDecoder().decode([TrendDay].self, from: data) { trend = v }
-        if let data = d.data(forKey: "c_quotas"),
-           let v = try? JSONDecoder().decode([PlatformQuota].self, from: data) { quotas = v }
     }
 
     private func saveToCache() {
@@ -425,7 +440,6 @@ class MenuBarViewModel: ObservableObject {
         if let data = try? JSONEncoder().encode(stats) { d.set(data, forKey: "c_stats") }
         if let data = try? JSONEncoder().encode(recentItems) { d.set(data, forKey: "c_recent") }
         if let data = try? JSONEncoder().encode(trend) { d.set(data, forKey: "c_trend") }
-        if let data = try? JSONEncoder().encode(quotas) { d.set(data, forKey: "c_quotas") }
     }
 
     private var todayStr: String {
