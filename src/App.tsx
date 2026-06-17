@@ -11,6 +11,8 @@ import {
   RefreshCw,
   Wallet,
   X,
+  ArrowDownIcon,
+  ArrowUpIcon,
 } from "lucide-react";
 import {  openUrl } from '@tauri-apps/plugin-opener';
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -460,8 +462,12 @@ export default function App() {
               dashboard.recentItems.slice(0, 3).map((item) => (
                 <div className="request" key={item.id}>
                   <span className="model">{shortModel(item.model)}</span>
-                  <span className="request-tokens">
-                    {tokens(item.input_tokens)}-&gt;{tokens(item.output_tokens)}
+                  <span className="request-tokens flex items-center">
+                    <ArrowDownIcon size={10}/>
+                    {tokens(item.input_tokens)}
+                    <span className="mx-1"/>
+                    <ArrowUpIcon size={10}/>
+                    {tokens(item.output_tokens)}
                   </span>
                   <strong>{formatMoney(item.actual_cost)}</strong>
                   <span className="ago">{timeAgo(item.created_at)}</span>
