@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   readAccounts,
   readActiveAccount,
@@ -88,7 +88,7 @@ function chartData(data: DashboardData) {
     const key = date.toLocaleDateString("en-CA");
     return {
       label: date.toLocaleDateString(undefined, { weekday: "short" }),
-      cost: byDate.get(key) ?? 0,
+      Cost: byDate.get(key) ?? 0,
     };
   });
 }
@@ -192,7 +192,7 @@ export default function App() {
             <UserCircle size={22} />
           </button>
           {accountMenuOpen && (
-            <div className="menu">
+            <div className="menu popups">
               {accounts.map((account) => (
                 <button key={account.id} onClick={() => setActive(account)}>
                   <span>{account.email}</span>
@@ -241,11 +241,25 @@ export default function App() {
           <SectionTitle icon={<BarChart3 size={14} />} text="7-Day Spend" />
           <section className="chart">
             <ResponsiveContainer width="100%" height={82}>
-              <BarChart data={chartData(dashboard)} margin={{ top: 4, right: 0, left: -18, bottom: 0 }}>
+              <BarChart data={chartData(dashboard)} margin={{ top: 4, right: 2, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="rgba(238, 242, 248, 0.12)" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={10} />
-                <YAxis tickLine={false} axisLine={false} fontSize={10} width={34} />
-                <Tooltip formatter={(value) => money(Number(value), 4)} cursor={{ fill: "rgba(47, 111, 237, 0.08)" }} />
-                <Bar dataKey="cost" fill="#2f6fed" radius={[4, 4, 0, 0]} minPointSize={2} />
+                <YAxis tickLine={false} axisLine={false} fontSize={10} width={48} tickFormatter={(value) => money(Number(value), 2)} />
+                <Tooltip
+                  formatter={(value) => money(Number(value), 4)}
+                  cursor={{ fill: "rgba(47, 111, 237, 0.08)" }}
+                  contentStyle={{
+                    background: "var(--popup-bg)",
+                    border: "1px solid rgba(238, 242, 248, 0.16)",
+                    borderRadius: 8,
+                    color: "#eef2f8",
+                    backdropFilter: "var(--popup-blur)",
+                    WebkitBackdropFilter: "var(--popup-blur)",
+                  }}
+                  labelStyle={{ color: "#9aa6b8" }}
+                  itemStyle={{ color: "#eef2f8" }}
+                />
+                <Bar dataKey="Cost" fill="#2f6fed" radius={[4, 4, 0, 0]} minPointSize={2} />
               </BarChart>
             </ResponsiveContainer>
           </section>

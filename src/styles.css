@@ -129,6 +129,15 @@ footer,
   position: relative;
 }
 
+[data-os="windows"] {
+  --popup-bg: #222;
+  --popup-blur: blur(0px);
+}
+
+[data-os="macos"] {
+  --popup-bg: #00000050;
+  --popup-blur: blur(5px);
+}
 .menu {
   position: absolute;
   z-index: 10;
@@ -138,10 +147,10 @@ footer,
   padding: 6px;
   border: 1px solid rgba(238, 242, 248, 0.12);
   border-radius: 8px;
-  background: #00000050;
-  backdrop-filter: blur(5px);
-  --webkit-backdrop-filter: blur(5px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32);
+  background: var(--popup-bg);
+  backdrop-filter: var(--popup-blur);
+  -webkit-backdrop-filter: var(--popup-blur);
 }
 
 .menu button {
