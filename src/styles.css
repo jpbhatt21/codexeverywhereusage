@@ -61,6 +61,19 @@ button {
   border-bottom: 1px solid rgba(238, 242, 248, 0.1);
 }
 
+.brand-link {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
 .brand-mark,
 .wallet {
   display: grid;
@@ -74,7 +87,6 @@ button {
 
 .title-block {
   min-width: 0;
-  flex: 1;
 }
 
 h1,
@@ -109,11 +121,20 @@ footer,
   white-space: nowrap;
 }
 
+.brand-shortcut {
+  flex: 0 0 auto;
+  color: #9aa6b8;
+}
+
 .icon-button {
   display: grid;
   width: 28px;
   height: 28px;
   place-items: center;
+  justify-items: center;
+  align-items: center;
+  padding: 2px;
+  
   border: 0;
   border-radius: 8px;
   color: #9aa6b8;
@@ -145,6 +166,7 @@ footer,
   z-index: 10;
   top: 32px;
   right: 0;
+  
   width: 220px;
   padding: 6px;
   border: 1px solid rgba(238, 242, 248, 0.12);
@@ -173,6 +195,31 @@ footer,
 .menu .danger {
   color: #cb3a31;
   justify-content: flex-start;
+  padding-left: 15px;
+
+}
+
+.account-entry {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-entry span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-avatar {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .content {
@@ -192,6 +239,13 @@ footer,
   align-items: center;
   gap: 12px;
   padding: 12px;
+}
+
+.balance-row {
+  display: flex;
+  align-items: center;
+  justify-items: center;
+  gap: 8px;
 }
 
 .wallet {
@@ -348,6 +402,12 @@ footer {
   font-size: 12px;
 }
 
+.topup-button {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
 .currency-select {
   width: 64px;
   outline: none;
@@ -355,6 +415,11 @@ footer {
 
 .currency-select:focus {
   border-color: #6ea8ff;
+}
+
+.currency-select option {
+  color: #eef2f8;
+  background: var(--popup-bg);
 }
 
 .login {

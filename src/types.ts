@@ -2,6 +2,7 @@ export type Account = {
   id: string;
   email: string;
   token: string;
+  avatarColor: string;
 };
 
 export type DashboardStats = {

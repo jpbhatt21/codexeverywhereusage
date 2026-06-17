@@ -6,11 +6,13 @@ import {
   Clock3,
   DollarSign,
   LogOut,
+  Plus,
+  ArrowUpRight,
   RefreshCw,
-  UserCircle,
   Wallet,
   X,
 } from "lucide-react";
+import {  openUrl } from '@tauri-apps/plugin-opener';
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
@@ -30,6 +32,7 @@ import { init, resizeManager } from "./window_manager";
 
 const currencies = ["USD", "EUR", "GBP", "INR", "JPY", "CAD", "AUD", "SGD", "CHF"] as const;
 const rateMaxAge = 24 * 60 * 60 * 1000;
+const avatarPalette = ["#2f6fed", "#48d597", "#a992ff", "#ffad5f", "#ff6b5f", "#14b8a6", "#f472b6", "#f59e0b"];
 
 const emptyDashboard: DashboardData = {
   email: "",
@@ -113,6 +116,32 @@ function chartData(data: DashboardData) {
   });
 }
 
+function pickAvatarColor(seed: string) {
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+  }
+  return avatarPalette[hash % avatarPalette.length];
+}
+
+function avatarTextColor(background: string) {
+  const hex = background.replace("#", "");
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.55 ? "#111827" : "#f8fafc";
+}
+
+function userInitial(email: string) {
+  return email.trim().charAt(0).toUpperCase() || "?";
+}
+
+function openUri(url: string) {
+  console.log("Opening URL:", url);
+  openUrl(url).catch((err) => console.error("Failed to open URL:", err));
+}
+
 function BarLabel({
   x,
   y,
@@ -150,8 +179,11 @@ function BarLabel({
 }
 
 export default function App() {
-  const [accounts, setAccounts] = useState<Account[]>(() => readAccounts());
-  const [activeAccount, setActiveAccount] = useState<Account | null>(() => readActiveAccount());
+  const [accounts, setAccounts] = useState<Account[]>(() => readAccounts().map((account) => ({ ...account, avatarColor: account.avatarColor ?? pickAvatarColor(account.email) })));
+  const [activeAccount, setActiveAccount] = useState<Account | null>(() => {
+    const account = readActiveAccount();
+    return account ? { ...account, avatarColor: account.avatarColor ?? pickAvatarColor(account.email) } : null;
+  });
   const [dashboard, setDashboard] = useState<DashboardData>(() => readDashboardCache() ?? emptyDashboard);
   const [currency, setCurrency] = useState(() => readCurrencyPreference());
   const [exchangeRate, setExchangeRate] = useState(() => {
@@ -160,6 +192,7 @@ export default function App() {
   });
   const [refreshing, setRefreshing] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [windowActive, setWindowActive] = useState(() => document.visibilityState === "visible" && document.hasFocus());
   const isLoggedIn = Boolean(activeAccount);
   const shellRef = useRef<HTMLDivElement>(null);
   const formatMoney = useCallback((value: number, digits = 4) => money(value, currency, exchangeRate, digits), [currency, exchangeRate]);
@@ -191,10 +224,41 @@ export default function App() {
   }, [activeAccount]);
 
   useEffect(() => {
+    let cancelled = false;
+    const updateWindowActive = () => {
+      const next = document.visibilityState === "visible" && document.hasFocus();
+      setWindowActive((current) => {
+        if (current === next) return current;
+        if (next && !cancelled) {
+          void refresh(activeAccount);
+        }
+        return next;
+      });
+    };
+
+    const onFocus = () => updateWindowActive();
+    const onBlur = () => updateWindowActive();
+    const onVisibilityChange = () => updateWindowActive();
+
+    updateWindowActive();
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [activeAccount, refresh]);
+
+  useEffect(() => {
+    if (!windowActive) return;
     void refresh(activeAccount);
     const id = window.setInterval(() => void refresh(activeAccount), 120_000);
     return () => window.clearInterval(id);
-  }, [activeAccount, refresh]);
+  }, [activeAccount, refresh, windowActive]);
 
   useEffect(() => {
     saveCurrencyPreference(currency);
@@ -277,29 +341,49 @@ export default function App() {
   return (
     <Shell ref={shellRef}>
       <header className="header">
-        <div className="brand-mark">
-          <Brain size={22} />
-        </div>
-        <div className="title-block">
-          <h1>Codex Everywhere</h1>
-          <p>{dashboard.email || activeAccount?.email}</p>
-        </div>
+        <button className="brand-link" onClick={() => openUri("https://codex-everywhere.com/dashboard")} aria-label="Open dashboard">
+          <div className="brand-mark">
+            <Brain size={22} />
+          </div>
+          <div className="title-block">
+            <h1>Codex Everywhere</h1>
+            <p>{dashboard.email || activeAccount?.email}</p>
+          </div>
+          <ArrowUpRight size={14} className="brand-shortcut" />
+        </button>
         {refreshing && <RefreshCw className="spin muted-icon" size={16} />}
         <div className="account-menu">
           <button className="icon-button" onClick={() => setAccountMenuOpen((open) => !open)} aria-label="Accounts">
-            <UserCircle size={22} />
+            <AccountAvatar email={activeAccount?.email ?? dashboard.email} color={activeAccount?.avatarColor ?? pickAvatarColor(activeAccount?.email ?? dashboard.email ?? "")} />
           </button>
           {accountMenuOpen && (
             <div className="menu popups">
               {accounts.map((account) => (
                 <button key={account.id} onClick={() => setActive(account)}>
-                  <span>{account.email}</span>
+                  <span className="account-entry">
+                    <AccountAvatar email={account.email} color={account.avatarColor} />
+                    <span>{account.email}</span>
+                  </span>
                   {activeAccount?.id === account.id && <Check size={14} />}
                 </button>
               ))}
-              <button onClick={logout}>Add Account</button>
+              <button onClick={logout}>
+                <Plus size={14}
+                style={{
+                  marginRight:"12px",
+                  marginLeft:"6px"
+                }} 
+                />
+                <span
+                style={{
+                  width:"100%",
+                  translate:"-8px"
+                }}
+                >Add Account</span>
+              </button>
               <button className="danger" onClick={logout}>
-                <LogOut size={14} />
+                <LogOut size={14} 
+                />
                 Logout
               </button>
             </div>
@@ -317,7 +401,13 @@ export default function App() {
             </div>
             <div>
               <p className="label">Balance</p>
-              <div className={dashboard.balance < 5 ? "balance low-text" : "balance"}>{formatMoney(dashboard.balance, 2)}</div>
+              <div className="balance-row">
+                <div className={dashboard.balance < 5 ? "balance low-text" : "balance"}>{formatMoney(dashboard.balance, 2)}</div>
+                <button className="small-button topup-button" onClick={() => openUri("https://codex-everywhere.com/purchase")}>
+                  <ArrowUpRight size={13} />
+                  Top Up
+                </button>
+              </div>
             </div>
             <div className="metrics">
               <span>
@@ -430,7 +520,8 @@ function Login({
     setError("");
     try {
       const token = (await invoke("login", { email, password })) as string;
-      onLogin({ id: email, email, token });
+      const avatarColor = pickAvatarColor(email);
+      onLogin({ id: email, email, token, avatarColor });
       setEmail("");
       setPassword("");
     } catch (err) {
@@ -456,7 +547,7 @@ function Login({
           <span>Or switch account</span>
           {accounts.map((account) => (
             <button key={account.id} onClick={() => onSwitch(account)}>
-              <UserCircle size={16} />
+              <AccountAvatar email={account.email} color={account.avatarColor} size={16} />
               {account.email}
               <Check size={15} />
             </button>
@@ -483,5 +574,24 @@ function Metric({ label, value, sub, tone = "orange" }: { label: string; value: 
       <strong>{value}</strong>
       <em>{sub}</em>
     </div>
+  );
+}
+
+function AccountAvatar({ email, color, size = 22 }: { email?: string; color: string; size?: number }) {
+  const background = color || pickAvatarColor(email ?? "");
+  return (
+    <span
+      className="account-avatar"
+      style={{
+        width: size,
+        height: size,
+        background,
+        color: avatarTextColor(background),
+        fontSize: Math.max(10, Math.floor(size * 0.5)),
+      }}
+      aria-hidden="true"
+    >
+      {userInitial(email ?? "")}
+    </span>
   );
 }
