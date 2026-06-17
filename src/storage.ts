@@ -3,6 +3,14 @@ import type { Account, DashboardData } from "./types";
 const accountsKey = "codex_accounts";
 const activeKey = "codex_active_account";
 const cacheKey = "codex_dashboard_cache";
+const currencyKey = "codex_currency";
+const exchangeRateKey = "codex_exchange_rate";
+
+export type ExchangeRateCache = {
+  currency: string;
+  rate: number;
+  fetchedAt: number;
+};
 
 export function readAccounts(): Account[] {
   try {
@@ -39,4 +47,24 @@ export function readDashboardCache(): DashboardData | null {
 
 export function saveDashboardCache(data: DashboardData) {
   localStorage.setItem(cacheKey, JSON.stringify(data));
+}
+
+export function readCurrencyPreference() {
+  return localStorage.getItem(currencyKey) ?? "USD";
+}
+
+export function saveCurrencyPreference(currency: string) {
+  localStorage.setItem(currencyKey, currency);
+}
+
+export function readExchangeRateCache(): ExchangeRateCache | null {
+  try {
+    return JSON.parse(localStorage.getItem(exchangeRateKey) ?? "null");
+  } catch {
+    return null;
+  }
+}
+
+export function saveExchangeRateCache(data: ExchangeRateCache) {
+  localStorage.setItem(exchangeRateKey, JSON.stringify(data));
 }

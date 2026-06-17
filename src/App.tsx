@@ -12,17 +12,24 @@ import {
   X,
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   readAccounts,
   readActiveAccount,
   readDashboardCache,
+  readCurrencyPreference,
+  readExchangeRateCache,
   saveAccounts,
   saveActiveAccount,
   saveDashboardCache,
+  saveCurrencyPreference,
+  saveExchangeRateCache,
 } from "./storage";
 import type { Account, DashboardData } from "./types";
 import { init, resizeManager } from "./window_manager";
+
+const currencies = ["USD", "EUR", "GBP", "INR", "JPY", "CAD", "AUD", "SGD", "CHF"] as const;
+const rateMaxAge = 24 * 60 * 60 * 1000;
 
 const emptyDashboard: DashboardData = {
   email: "",
@@ -55,8 +62,21 @@ const emptyDashboard: DashboardData = {
   lastUpdated: "",
 };
 
-function money(value: number, digits = 4) {
-  return `$${value.toFixed(digits)}`;
+function money(value: number, currency = "USD", rate = 1, digits = 4) {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value * rate);
+}
+
+function roundedMoney(value: number, currency = "USD", rate = 1) {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(value * rate);
 }
 
 function tokens(value: number) {
@@ -93,14 +113,57 @@ function chartData(data: DashboardData) {
   });
 }
 
+function BarLabel({
+  x,
+  y,
+  width,
+  height,
+  value,
+  currency,
+  rate,
+}: {
+  x?: string | number;
+  y?: string | number;
+  width?: string | number;
+  height?: string | number;
+  value?: React.ReactNode;
+  currency?: string;
+  rate?: number;
+}) {
+  const labelX = Number(x);
+  const labelY = Number(y);
+  const labelWidth = Number(width);
+  const labelHeight = Number(height);
+  if (![labelX, labelY, labelWidth, labelHeight].every(Number.isFinite)) return null;
+  return (
+    <text
+      x={labelX + labelWidth / 2}
+      y={labelY + Math.max(12, labelHeight / 2 + 4)}
+      fill="#eef2f8"
+      fontSize={10}
+      fontWeight={700}
+      textAnchor="middle"
+    >
+      {roundedMoney(Number(value ?? 0), currency, rate)}
+    </text>
+  );
+}
+
 export default function App() {
   const [accounts, setAccounts] = useState<Account[]>(() => readAccounts());
   const [activeAccount, setActiveAccount] = useState<Account | null>(() => readActiveAccount());
   const [dashboard, setDashboard] = useState<DashboardData>(() => readDashboardCache() ?? emptyDashboard);
+  const [currency, setCurrency] = useState(() => readCurrencyPreference());
+  const [exchangeRate, setExchangeRate] = useState(() => {
+    const cached = readExchangeRateCache();
+    return cached?.currency === readCurrencyPreference() ? cached.rate : 1;
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const isLoggedIn = Boolean(activeAccount);
   const shellRef = useRef<HTMLDivElement>(null);
+  const formatMoney = useCallback((value: number, digits = 4) => money(value, currency, exchangeRate, digits), [currency, exchangeRate]);
+  const formatRoundedMoney = useCallback((value: number) => roundedMoney(value, currency, exchangeRate), [currency, exchangeRate]);
   const refresh = useCallback(async (account = activeAccount) => {
     if (!account) return;
     setRefreshing(true);
@@ -132,6 +195,41 @@ export default function App() {
     const id = window.setInterval(() => void refresh(activeAccount), 120_000);
     return () => window.clearInterval(id);
   }, [activeAccount, refresh]);
+
+  useEffect(() => {
+    saveCurrencyPreference(currency);
+    if (currency === "USD") {
+      setExchangeRate(1);
+      saveExchangeRateCache({ currency, rate: 1, fetchedAt: Date.now() });
+      return;
+    }
+
+    const cached = readExchangeRateCache();
+    if (cached?.currency === currency && Date.now() - cached.fetchedAt < rateMaxAge) {
+      setExchangeRate(cached.rate);
+      return;
+    }
+
+    let cancelled = false;
+    fetch(`https://api.frankfurter.dev/v2/rate/USD/${currency}`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Rate lookup failed: ${response.status}`);
+        return response.json() as Promise<{ rate?: number }>;
+      })
+      .then((data) => {
+        if (cancelled || typeof data.rate !== "number") return;
+        setExchangeRate(data.rate);
+        saveExchangeRateCache({ currency, rate: data.rate, fetchedAt: Date.now() });
+      })
+      .catch(() => {
+        const fallback = readExchangeRateCache();
+        if (!cancelled && fallback?.currency === currency) setExchangeRate(fallback.rate);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currency]);
 
   const setActive = (account: Account | null) => {
     setActiveAccount(account);
@@ -219,7 +317,7 @@ export default function App() {
             </div>
             <div>
               <p className="label">Balance</p>
-              <div className={dashboard.balance < 5 ? "balance low-text" : "balance"}>{money(dashboard.balance, 2)}</div>
+              <div className={dashboard.balance < 5 ? "balance low-text" : "balance"}>{formatMoney(dashboard.balance, 2)}</div>
             </div>
             <div className="metrics">
               <span>
@@ -233,9 +331,9 @@ export default function App() {
 
           <SectionTitle icon={<DollarSign size={14} />} text="Spending" />
           <section className="spend-grid">
-            <Metric label="Today Cost" value={money(dashboard.stats.today_actual_cost)} sub={money(dashboard.stats.today_cost)} />
+            <Metric label="Today Cost" value={formatMoney(dashboard.stats.today_actual_cost)} sub={formatMoney(dashboard.stats.today_cost)} />
             <Metric label="Token Usage" value={tokens(dashboard.stats.today_tokens)} sub={tokens(dashboard.stats.total_tokens)} tone="violet" />
-            <Metric label="Total Cost" value={money(dashboard.stats.total_actual_cost)} sub={money(dashboard.stats.total_cost)} tone="green" />
+            <Metric label="Total Cost" value={formatMoney(dashboard.stats.total_actual_cost)} sub={formatMoney(dashboard.stats.total_cost)} tone="green" />
           </section>
 
           <SectionTitle icon={<BarChart3 size={14} />} text="7-Day Spend" />
@@ -244,9 +342,9 @@ export default function App() {
               <BarChart data={chartData(dashboard)} margin={{ top: 4, right: 2, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="rgba(238, 242, 248, 0.12)" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={10} />
-                <YAxis tickLine={false} axisLine={false} fontSize={10} width={48} tickFormatter={(value) => money(Number(value), 2)} />
+                <YAxis tickLine={false} axisLine={false} fontSize={10} width={58} tickFormatter={(value) => formatMoney(Number(value), 2)} />
                 <Tooltip
-                  formatter={(value) => money(Number(value), 4)}
+                  formatter={(value) => formatMoney(Number(value), 4)}
                   cursor={{ fill: "rgba(47, 111, 237, 0.08)" }}
                   contentStyle={{
                     background: "var(--popup-bg)",
@@ -259,7 +357,7 @@ export default function App() {
                   labelStyle={{ color: "#9aa6b8" }}
                   itemStyle={{ color: "#eef2f8" }}
                 />
-                <Bar dataKey="Cost" fill="#2f6fed" radius={[4, 4, 0, 0]} minPointSize={2} />
+                <Bar dataKey="Cost" fill="#2f6fed" radius={[4, 4, 0, 0]} minPointSize={2}/>
               </BarChart>
             </ResponsiveContainer>
           </section>
@@ -275,7 +373,7 @@ export default function App() {
                   <span className="request-tokens">
                     {tokens(item.input_tokens)}-&gt;{tokens(item.output_tokens)}
                   </span>
-                  <strong>{money(item.actual_cost)}</strong>
+                  <strong>{formatMoney(item.actual_cost)}</strong>
                   <span className="ago">{timeAgo(item.created_at)}</span>
                 </div>
               ))
@@ -290,6 +388,13 @@ export default function App() {
           Refresh
         </button>
         <span>{dashboard.lastUpdated ? `Updated ${dashboard.lastUpdated}` : ""}</span>
+        <select className="currency-select" value={currency} onChange={(event) => setCurrency(event.target.value)} aria-label="Currency">
+          {currencies.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
         <button className="small-button" onClick={() => invoke("hide_window")}>
           <X size={13} />
           Close

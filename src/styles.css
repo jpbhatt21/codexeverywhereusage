@@ -23,7 +23,8 @@ html,body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -121,6 +122,7 @@ footer,
 
 .icon-button:hover,
 .small-button:hover,
+.currency-select:hover,
 .menu button:hover {
   background: rgba(155, 155, 155, 0.08);
 }
@@ -332,7 +334,8 @@ footer {
   font-size: 11px;
 }
 
-.small-button {
+.small-button,
+.currency-select {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -343,6 +346,15 @@ footer {
   color: #d7deea;
   background: rgba(238, 242, 248, 0.06);
   font-size: 12px;
+}
+
+.currency-select {
+  width: 64px;
+  outline: none;
+}
+
+.currency-select:focus {
+  border-color: #6ea8ff;
 }
 
 .login {
