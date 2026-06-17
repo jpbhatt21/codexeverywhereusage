@@ -11,7 +11,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   readAccounts,
@@ -22,6 +22,7 @@ import {
   saveDashboardCache,
 } from "./storage";
 import type { Account, DashboardData } from "./types";
+import { init, resizeManager } from "./window_manager";
 
 const emptyDashboard: DashboardData = {
   email: "",
@@ -99,7 +100,7 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const isLoggedIn = Boolean(activeAccount);
-
+  const shellRef = useRef<HTMLDivElement>(null);
   const refresh = useCallback(async (account = activeAccount) => {
     if (!account) return;
     setRefreshing(true);
@@ -161,9 +162,22 @@ export default function App() {
       </Shell>
     );
   }
+  useEffect(() => {
+    init();
+  }, []);
+  useEffect(() => {
+    if (shellRef.current) {
+      const element = shellRef.current;
+      const resizeObserver = new ResizeObserver(() => {
+        resizeManager(element);
+      });
+      resizeObserver.observe(element);
+      return () => resizeObserver.disconnect();
+    }
+  }, []);
 
   return (
-    <Shell>
+    <Shell ref={shellRef}>
       <header className="header">
         <div className="brand-mark">
           <Brain size={22} />
@@ -271,8 +285,8 @@ export default function App() {
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
-  return <div className="shell">{children}</div>;
+function Shell({ children , ref}: { children: React.ReactNode; ref?: any }) {
+  return <div className="shell" ref={ref}>{children}</div>;
 }
 
 function Login({

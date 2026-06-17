@@ -280,7 +280,7 @@ fn hide_window(app: AppHandle) {
         let _ = window.hide();
     }
 }
-use window_vibrancy::{apply_blur, apply_vibrancy, NSVisualEffectMaterial};
+use window_vibrancy::{apply_blur, apply_vibrancy, NSVisualEffectMaterial,apply_acrylic};
 
 pub fn run() {
     tauri::Builder::default()
@@ -296,7 +296,7 @@ pub fn run() {
 
             // Apply blur/acrylic for Windows
             #[cfg(target_os = "windows")]
-            apply_blur(&window, Some((18, 18, 18, 125)))
+            apply_acrylic(&window, Some((1, 1, 1, 100)))
                 .expect("Unsupported platform!");
 
             #[cfg(target_os = "macos")]
