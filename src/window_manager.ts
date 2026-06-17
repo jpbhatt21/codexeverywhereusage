@@ -1,5 +1,14 @@
 import { getCurrentWindow, LogicalSize, PhysicalSize } from "@tauri-apps/api/window";
+import { platform } from '@tauri-apps/plugin-os';
 const window = getCurrentWindow();
+const os = platform();
+if (os === "macos") {
+    document.documentElement.setAttribute("data-os", "macos");
+} else if (os === "windows") {
+    document.documentElement.setAttribute("data-os", "windows");
+} else if (os === "linux") {
+    document.documentElement.setAttribute("data-os", "linux");
+}
 export function init(){
     window.setAlwaysOnTop(true);
 }
