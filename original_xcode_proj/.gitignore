@@ -49,10 +49,3 @@ fastlane/test_output
 *.swp
 *.swo
 *~
-
-# DMG (built separately)
-*.dmg
-ref*
-tauri*
-node_modules
-dist
