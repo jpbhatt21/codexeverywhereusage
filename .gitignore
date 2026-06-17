@@ -53,6 +53,7 @@ fastlane/test_output
 # DMG (built separately)
 *.dmg
 ref*
-tauri*
+tauri/*
+tauri
 node_modules
 dist
