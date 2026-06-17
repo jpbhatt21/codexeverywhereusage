@@ -352,22 +352,24 @@ export default function App() {
 			{!isLoggedIn ? (
 				<Login accounts={accounts} onLogin={addAccount} onSwitch={setActive} compact />
 			) : (
-				<main className="content">
-					<section className="balance-card">
-						<div className={dashboard.balance < 5 ? "wallet low" : "wallet"}>
-							<Wallet size={22} />
-						</div>
-						<div>
-							<p className="label">Balance</p>
-							<div className="balance-row">
+				<main className="content w-full min-w-fit">
+					<section className="balance-card min-w-fit justify-between gap-2">
+						<div className="flex gap-2 items-center justify-center">
+							<div className={dashboard.balance < 5 ? "wallet low" : "wallet"}>
+								<Wallet size={22} />
+							</div>
+							<div className="min-w-fit">
+								<div className="balance-row min-w-fit">
+									<p className="label">Balance</p>
+									<button className="small-button topup-button" onClick={() => openUri("https://codex-everywhere.com/purchase")}>
+										<ArrowUpRight size={13} />
+										Top Up
+									</button>
+								</div>
 								<div className={dashboard.balance < 5 ? "balance low-text" : "balance"}>{formatMoney(dashboard.balance, 2)}</div>
-								<button className="small-button topup-button" onClick={() => openUri("https://codex-everywhere.com/purchase")}>
-									<ArrowUpRight size={13} />
-									Top Up
-								</button>
 							</div>
 						</div>
-						<div className="metrics">
+						<div className="metrics min-w-fit">
 							<span className="min-w-fit text-start w-full flex flex-col">
 								<span>Cache:</span>
 								<b>{cacheRate}</b>
@@ -380,7 +382,7 @@ export default function App() {
 					</section>
 
 					<SectionTitle icon={<DollarSign size={14} />} text="Spending" />
-					<section className="spend-grid">
+					<section className="spend-grid min-w-fit">
 						<Metric label="Today Cost" value={formatMoney(dashboard.stats.today_actual_cost)} sub={formatMoney(dashboard.stats.today_cost)} />
 						<Metric label="Token Usage" value={tokens(dashboard.stats.today_tokens)} sub={tokens(dashboard.stats.total_tokens)} tone="violet" />
 						<Metric label="Total Cost" value={formatMoney(dashboard.stats.total_actual_cost)} sub={formatMoney(dashboard.stats.total_cost)} tone="green" />
@@ -527,10 +529,12 @@ function SectionTitle({ icon, text }: { icon: React.ReactNode; text: string }) {
 
 function Metric({ label, value, sub, tone = "orange" }: { label: string; value: string; sub: string; tone?: "orange" | "violet" | "green" }) {
 	return (
-		<div className={`metric ${tone}`}>
-			<span>{label}</span>
-			<strong>{value}</strong>
-			<em>{sub}</em>
+		<div className={`metric ${tone} min-w-fit`}>
+			<span className="min-w-fit">{label}</span>
+			<div className="min-w-fit">
+				<strong>{value}</strong>
+			</div>
+			<em className="min-w-fit">{sub}</em>
 		</div>
 	);
 }
