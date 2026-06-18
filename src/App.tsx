@@ -13,7 +13,7 @@ import Update from "./Update";
 
 const currencies = ["USD", "EUR", "GBP", "INR", "JPY", "CAD", "AUD", "SGD", "CHF"] as const;
 const rateMaxAge = 24 * 60 * 60 * 1000;
-let initd= false;
+let initd = false;
 const emptyDashboard: DashboardData = {
 	email: "",
 	balance: 0,
@@ -116,7 +116,7 @@ export default function App() {
 	const [refreshing, setRefreshing] = useState(false);
 	const [updateInfo, setUpdateInfo] = useState<UpdateInfo>({
 		version: "-",
-		currentVersion:"",
+		currentVersion: "",
 		update: false,
 		date: "",
 		body: "{}",
@@ -254,20 +254,21 @@ export default function App() {
 	}, [dashboard.stats]);
 
 	useEffect(() => {
-		if(!initd){
+		if (!initd) {
 			initd = true;
-		(async () => {
-			if (isLoggedIn || dashboard.email) {
-				const info = await init();
-				if (info.update) {
-					setUpdateInfo(info);
-					console.log(`Update available: ${info.version}`, info);
-				} else {
-					setUpdateInfo((prev) => ({ ...prev, currentVersion: info.currentVersion }));
-					console.log("No update available");
+			(async () => {
+				if (isLoggedIn || dashboard.email) {
+					const info = await init();
+					if (info.update) {
+						setUpdateInfo(info);
+						console.log(`Update available: ${info.version}`, info);
+					} else {
+						setUpdateInfo((prev) => ({ ...prev, currentVersion: info.currentVersion }));
+						console.log("No update available");
+					}
 				}
-			}
-		})();}
+			})();
+		}
 	}, [isLoggedIn, dashboard.email]);
 	useEffect(() => {
 		if (shellRef.current) {
@@ -290,6 +291,8 @@ export default function App() {
 	return (
 		<Shell ref={shellRef}>
 			<header className="header">
+				{/* do not remove this button */}
+				<button className="h-0 w-0 -mr-2" />
 				<button className="brand-link" onClick={() => openUri("https://codex-everywhere.com/dashboard")} aria-label="Open dashboard">
 					<div className="brand-mark">
 						<Brain size={22} />

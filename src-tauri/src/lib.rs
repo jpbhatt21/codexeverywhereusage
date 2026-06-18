@@ -3,7 +3,7 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, PhysicalPosition, Rect, Runtime, WindowEvent,
+    AppHandle, LogicalSize, Manager, PhysicalPosition, Rect, Runtime, WebviewUrl,
 };
 
 const BASE_URL: &str = "https://codex-everywhere.com/api/v1";
@@ -265,59 +265,180 @@ fn position_popover<R: Runtime>(app: &AppHandle<R>, tray_rect: Option<Rect>) {
     let _ = window.set_position(PhysicalPosition::new(x, y));
 }
 
-fn toggle_popover<R: Runtime>(app: &AppHandle<R>, tray_rect: Option<Rect>) {
-    let Some(window) = app.get_webview_window("main") else {
-        return;
-    };
+#[cfg(target_os = "windows")]
+use window_vibrancy::apply_acrylic;
+#[cfg(target_os = "macos")]
+use tauri_nspanel::{
+    tauri_panel, CollectionBehavior, ManagerExt, PanelBuilder, PanelLevel, StyleMask,
+};
+#[cfg(target_os = "macos")]
+use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
-    if window.is_visible().unwrap_or(false) {
-        let _ = window.hide();
-    } else {
-        position_popover(app, tray_rect);
+#[cfg(target_os = "macos")]
+tauri_panel! {
+    panel!(MainPanel {
+        config: {
+            can_become_key_window: true,
+            can_become_main_window: false,
+            is_floating_panel: true,
+            hides_on_deactivate: false
+        }
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn panel_is_visible<R: Runtime>(app: &AppHandle<R>) -> Option<bool> {
+    app.get_webview_panel("main")
+        .ok()
+        .map(|panel| panel.is_visible())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn panel_is_visible<R: Runtime>(_app: &AppHandle<R>) -> Option<bool> {
+    None
+}
+
+#[cfg(target_os = "macos")]
+fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Ok(panel) = app.get_webview_panel("main") {
+        panel.show_and_make_key();
+    } else if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.set_focus();
     }
 }
 
-fn show_popover<R: Runtime>(app: &AppHandle<R>, tray_rect: Option<Rect>) {
-    let Some(window) = app.get_webview_window("main") else {
-        return;
-    };
-
-    position_popover(app, tray_rect);
-    let _ = window.show();
-    let _ = window.set_focus();
+#[cfg(not(target_os = "macos"))]
+fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
 }
 
-#[tauri::command]
-fn hide_window(app: AppHandle) {
+#[cfg(target_os = "macos")]
+fn hide_main_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Ok(panel) = app.get_webview_panel("main") {
+        panel.hide();
+    } else if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn hide_main_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.hide();
     }
 }
-use window_vibrancy::{apply_acrylic, apply_vibrancy, NSVisualEffectMaterial};
+
+#[cfg(target_os = "macos")]
+fn ensure_main_surface(app: &AppHandle) -> tauri::Result<()> {
+    PanelBuilder::<_, MainPanel>::new(app, "main")
+        .url(WebviewUrl::App("index.html".into()))
+        .title("Codex Everywhere")
+        .size(tauri::Size::Logical(LogicalSize {
+            width: 380.0,
+            height: 570.0,
+        }))
+        .level(PanelLevel::Floating)
+        .floating(true)
+        .has_shadow(true)
+        .transparent(true)
+        .collection_behavior(CollectionBehavior::new().can_join_all_spaces().stationary())
+        .hides_on_deactivate(false)
+        .works_when_modal(true)
+        .style_mask(StyleMask::empty().nonactivating_panel())
+        .no_activate(true)
+        .with_window(|window| {
+            window
+                .decorations(false)
+                .transparent(true)
+                .visible(false)
+                .resizable(false)
+                .inner_size(380.0, 570.0)
+                .min_inner_size(380.0, 420.0)
+                .max_inner_size(380.0, 570.0)
+                .skip_taskbar(true)
+                .always_on_top(true)
+        })
+        .build()?;
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn ensure_main_surface<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    tauri::WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+        .title("Codex Everywhere")
+        .inner_size(380.0, 570.0)
+        .min_inner_size(380.0, 420.0)
+        .max_inner_size(380.0, 570.0)
+        .decorations(false)
+        .transparent(true)
+        .visible(false)
+        .resizable(false)
+        .skip_taskbar(true)
+        .always_on_top(true)
+        .build()?;
+    Ok(())
+}
+
+fn toggle_popover<R: Runtime>(app: &AppHandle<R>, tray_rect: Option<Rect>) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+
+    if panel_is_visible(app).unwrap_or_else(|| window.is_visible().unwrap_or(false)) {
+        hide_main_window(app);
+    } else {
+        position_popover(app, tray_rect);
+        show_main_window(app);
+    }
+}
+
+fn show_popover<R: Runtime>(app: &AppHandle<R>, tray_rect: Option<Rect>) {
+    if app.get_webview_window("main").is_none() {
+        return;
+    }
+
+    position_popover(app, tray_rect);
+    show_main_window(app);
+}
+
+#[tauri::command]
+fn hide_window(app: AppHandle) {
+    hide_main_window(&app);
+}
 
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_os::init());
+
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_nspanel::init());
+
+    builder
         .invoke_handler(tauri::generate_handler![hide_window, login, load_dashboard])
         .setup(|app| {
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+            ensure_main_surface(app.handle())?;
+
             let window = app.get_webview_window("main").unwrap();
 
-            // Apply vibrancy for macOS
             #[cfg(target_os = "macos")]
-            apply_vibrancy(&window, NSVisualEffectMaterial::Sheet, None, Some(12.0))
-                .expect("Unsupported platform!");
+            {
+                apply_vibrancy(&window, NSVisualEffectMaterial::Sheet, None, Some(12.0))
+                    .expect("Unsupported platform!");
+            }
 
             // Apply blur/acrylic for Windows
             #[cfg(target_os = "windows")]
             apply_acrylic(&window, Some((1, 1, 1, 100))).expect("Unsupported platform!");
-
-            #[cfg(target_os = "macos")]
-            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
@@ -348,13 +469,6 @@ pub fn run() {
             "quit" => app.exit(0),
             "show" => show_popover(app, None),
             _ => {}
-        })
-        .on_window_event(|window, event| {
-            if window.label() == "main" {
-                if let WindowEvent::Focused(false) = event {
-                    let _ = window.hide();
-                }
-            }
         })
         .run(tauri::generate_context!())
         .expect("error while running Codex Everywhere");

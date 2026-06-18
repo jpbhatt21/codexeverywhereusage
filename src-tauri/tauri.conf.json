@@ -11,26 +11,7 @@
 	},
 	"app": {
 		"macOSPrivateApi": true,
-		"windows": [
-			{
-				"label": "main",
-				"title": "Codex Everywhere",
-				"width": 380,
-				"height": 570,
-				"minWidth": 380,
-				"minHeight": 420,
-				"maxWidth": 380,
-				"resizable": false,
-				"fullscreen": false,
-				"decorations": false,
-				"transparent": true,
-				"visible": false,
-				"skipTaskbar": true,
-				"alwaysOnTop": true,
-				"focus": true,
-				"dragDropEnabled": false
-			}
-		],
+		"windows": [],
 		"security": {
 			"csp": null,
 			"capabilities": [
