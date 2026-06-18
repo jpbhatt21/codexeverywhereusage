@@ -1,56 +1,67 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Codex Everywhere",
-  "version": "1.0.0",
-  "identifier": "com.codexeverywhere.menubar",
-  "build": {
-    "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:3420",
-    "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist"
-  },
-  "app": {
-    "macOSPrivateApi": true,
-    "windows": [
-      {
-        "label": "main",
-        "title": "Codex Everywhere",
-        "width": 380,
-        "height": 570,
-        "minWidth": 380,
-        "minHeight": 420,
-        "maxWidth": 380,
-        "resizable": false,
-        "fullscreen": false,
-        "decorations": false,
-        "transparent": true,
-        "visible": false,
-        "skipTaskbar": true,
-        "alwaysOnTop": true,
-        "focus": true,
-        "dragDropEnabled": false
-      }
-    ],
-    "security": {
-      "csp": null,
-      "capabilities": ["default"]
-    },
-    "withGlobalTauri": false
-  },
-  "bundle": {
-    "active": true,
-    "targets": "all",
-    "icon": [
-      "icons/icon.png",
-      "icons/icon.ico"
-    ],
-    "windows": {
-      "nsis": {
-        "installerIcon": "icons/icon.ico"
-      }
-    },
-    "macOS": {
-      "minimumSystemVersion": "10.13"
-    }
-  }
+	"$schema": "https://schema.tauri.app/config/2",
+	"productName": "Codex Everywhere Monitor",
+	"version": "1.1.0",
+	"identifier": "com.codexeverywhere.monitor",
+	"build": {
+		"beforeDevCommand": "npm run dev",
+		"devUrl": "http://localhost:3420",
+		"beforeBuildCommand": "npm run build",
+		"frontendDist": "../dist"
+	},
+	"app": {
+		"macOSPrivateApi": true,
+		"windows": [
+			{
+				"label": "main",
+				"title": "Codex Everywhere",
+				"width": 380,
+				"height": 570,
+				"minWidth": 380,
+				"minHeight": 420,
+				"maxWidth": 380,
+				"resizable": false,
+				"fullscreen": false,
+				"decorations": false,
+				"transparent": true,
+				"visible": false,
+				"skipTaskbar": true,
+				"alwaysOnTop": true,
+				"focus": true,
+				"dragDropEnabled": false
+			}
+		],
+		"security": {
+			"csp": null,
+			"capabilities": [
+				"default"
+			]
+		},
+		"withGlobalTauri": false
+	},
+	"bundle": {
+		"createUpdaterArtifacts": true,
+		"active": true,
+		"targets": "all",
+		"icon": [
+			"icons/icon.png",
+			"icons/icon.ico"
+		],
+		"windows": {
+			"nsis": {
+				"installerIcon": "icons/icon.ico"
+			}
+		},
+		"macOS": {
+			"minimumSystemVersion": "10.13"
+		}
+	},
+	"plugins": {
+		"updater": {
+			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IERENjMyOUUwRkU2MzE3NzIKUldSeUYyUCs0Q2xqM2J5cWNnWnJ6OFRsS0lUNWlCeHJDNmRiTzZhWW1oS2JRdnBFUWZObFZBbWoK",
+			"endpoints": [
+				"https://github.com/jpbhatt21/codexeverywhereusage/releases/latest/download/latest.json"
+			]
+		}
+	}
 }

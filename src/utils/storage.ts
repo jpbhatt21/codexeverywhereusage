@@ -1,4 +1,4 @@
-import type { Account, DashboardData } from "./types";
+import type { Account, DashboardData } from "../types";
 
 const accountsKey = "codex_accounts";
 const activeKey = "codex_active_account";
@@ -67,4 +67,16 @@ export function readExchangeRateCache(): ExchangeRateCache | null {
 
 export function saveExchangeRateCache(data: ExchangeRateCache) {
   localStorage.setItem(exchangeRateKey, JSON.stringify(data));
+}
+
+export function removeAccount(account: Account) {
+  const accounts = readAccounts();
+  const filtered = accounts.filter((a) => a.id !== account.id);
+  saveAccounts(filtered);
+  const active = readActiveAccount();
+  if (active?.id === account.id) {
+    saveActiveAccount(null);
+    localStorage.removeItem(cacheKey)
+  }
+  window.location.reload();
 }

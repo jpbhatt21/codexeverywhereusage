@@ -1,16 +1,19 @@
 import { invoke } from "@tauri-apps/api/core";
 import { BarChart3, Brain, Check, Clock3, DollarSign, LogOut, Plus, ArrowUpRight, RefreshCw, Wallet, X, ArrowDownIcon, ArrowUpIcon } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { readAccounts, readActiveAccount, readDashboardCache, readCurrencyPreference, readExchangeRateCache, saveAccounts, saveActiveAccount, saveDashboardCache, saveCurrencyPreference, saveExchangeRateCache } from "./storage";
-import type { Account, DashboardData } from "./types";
-import { init, resizeManager } from "./window_manager";
+import { AccountAvatar, pickAvatarColor } from "./components/avatar";
+import Login from "./Login";
+import { readAccounts, readActiveAccount, readDashboardCache, readCurrencyPreference, readExchangeRateCache, saveAccounts, saveActiveAccount, saveDashboardCache, saveCurrencyPreference, saveExchangeRateCache, removeAccount } from "./utils/storage";
+import type { Account, DashboardData, UpdateInfo } from "./types";
+import { resizeManager } from "./utils/window";
+import { init } from "./utils/init";
+import Update from "./Update";
 
 const currencies = ["USD", "EUR", "GBP", "INR", "JPY", "CAD", "AUD", "SGD", "CHF"] as const;
 const rateMaxAge = 24 * 60 * 60 * 1000;
-const avatarPalette = ["#2f6fed", "#48d597", "#a992ff", "#ffad5f", "#ff6b5f", "#14b8a6", "#f472b6", "#f59e0b"];
-
+let initd= false;
 const emptyDashboard: DashboardData = {
 	email: "",
 	balance: 0,
@@ -93,43 +96,9 @@ function chartData(data: DashboardData) {
 	});
 }
 
-function pickAvatarColor(seed: string) {
-	let hash = 0;
-	for (let index = 0; index < seed.length; index += 1) {
-		hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
-	}
-	return avatarPalette[hash % avatarPalette.length];
-}
-
-function avatarTextColor(background: string) {
-	const hex = background.replace("#", "");
-	const r = Number.parseInt(hex.slice(0, 2), 16);
-	const g = Number.parseInt(hex.slice(2, 4), 16);
-	const b = Number.parseInt(hex.slice(4, 6), 16);
-	const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-	return luminance > 0.55 ? "#111827" : "#f8fafc";
-}
-
-function userInitial(email: string) {
-	return email.trim().charAt(0).toUpperCase() || "?";
-}
-
 function openUri(url: string) {
 	console.log("Opening URL:", url);
 	openUrl(url).catch((err) => console.error("Failed to open URL:", err));
-}
-
-function BarLabel({ x, y, width, height, value, currency, rate }: { x?: string | number; y?: string | number; width?: string | number; height?: string | number; value?: React.ReactNode; currency?: string; rate?: number }) {
-	const labelX = Number(x);
-	const labelY = Number(y);
-	const labelWidth = Number(width);
-	const labelHeight = Number(height);
-	if (![labelX, labelY, labelWidth, labelHeight].every(Number.isFinite)) return null;
-	return (
-		<text x={labelX + labelWidth / 2} y={labelY + Math.max(12, labelHeight / 2 + 4)} fill="#eef2f8" fontSize={10} fontWeight={700} textAnchor="middle">
-			{roundedMoney(Number(value ?? 0), currency, rate)}
-		</text>
-	);
 }
 
 export default function App() {
@@ -145,6 +114,14 @@ export default function App() {
 		return cached?.currency === readCurrencyPreference() ? cached.rate : 1;
 	});
 	const [refreshing, setRefreshing] = useState(false);
+	const [updateInfo, setUpdateInfo] = useState<UpdateInfo>({
+		version: "-",
+		currentVersion:"",
+		update: false,
+		date: "",
+		body: "{}",
+		raw: null,
+	});
 	const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 	const [windowActive, setWindowActive] = useState(() => document.visibilityState === "visible" && document.hasFocus());
 	const isLoggedIn = Boolean(activeAccount);
@@ -266,7 +243,9 @@ export default function App() {
 	};
 
 	const logout = () => {
-		setActive(null);
+		setActiveAccount(null);
+		removeAccount(activeAccount!);
+		setDashboard(emptyDashboard);
 	};
 
 	const cacheRate = useMemo(() => {
@@ -274,27 +253,40 @@ export default function App() {
 		return total > 0 ? `${Math.round((dashboard.stats.today_cache_read_tokens / total) * 100)}%` : "0%";
 	}, [dashboard.stats]);
 
-	if (!isLoggedIn && !dashboard.email) {
-		return (
-			<Shell>
-				<Login accounts={accounts} onLogin={addAccount} onSwitch={setActive} />
-			</Shell>
-		);
-	}
 	useEffect(() => {
-		init();
-	}, []);
+		if(!initd){
+			initd = true;
+		(async () => {
+			if (isLoggedIn || dashboard.email) {
+				const info = await init();
+				if (info.update) {
+					setUpdateInfo(info);
+					console.log(`Update available: ${info.version}`, info);
+				} else {
+					setUpdateInfo((prev) => ({ ...prev, currentVersion: info.currentVersion }));
+					console.log("No update available");
+				}
+			}
+		})();}
+	}, [isLoggedIn, dashboard.email]);
 	useEffect(() => {
 		if (shellRef.current) {
-			const element = shellRef.current;
-			const resizeObserver = new ResizeObserver(() => {
-				resizeManager(element);
-			});
-			resizeObserver.observe(element);
-			return () => resizeObserver.disconnect();
-		}
-	}, []);
+			const interval = setInterval(() => {
+				resizeManager(shellRef.current!);
+			}, 100);
 
+			return () => {
+				clearInterval(interval);
+			};
+		}
+	}, [shellRef]);
+	if (!isLoggedIn && !dashboard.email) {
+		return (
+			<div className="flex w-full h-full items-center justify-center p-4 fixed">
+				<Login accounts={accounts} onLogin={addAccount} onSwitch={setActive} updateInfo={updateInfo} />
+			</div>
+		);
+	}
 	return (
 		<Shell ref={shellRef}>
 			<header className="header">
@@ -324,7 +316,10 @@ export default function App() {
 									{activeAccount?.id === account.id && <Check size={14} />}
 								</button>
 							))}
-							<button onClick={logout}>
+							<button
+								onClick={() => {
+									setActive(null);
+								}}>
 								<Plus
 									size={14}
 									style={{
@@ -350,7 +345,7 @@ export default function App() {
 			</header>
 
 			{!isLoggedIn ? (
-				<Login accounts={accounts} onLogin={addAccount} onSwitch={setActive} compact />
+				<Login accounts={accounts} onLogin={addAccount} onSwitch={setActive} compact updateInfo={updateInfo} />
 			) : (
 				<main className="content w-full min-w-fit">
 					<section className="balance-card min-w-fit justify-between gap-2">
@@ -456,6 +451,7 @@ export default function App() {
 					Close
 				</button>
 			</footer>
+			{updateInfo?.update && <Update updateInfo={updateInfo} />}
 		</Shell>
 	);
 }
@@ -465,56 +461,6 @@ function Shell({ children, ref }: { children: React.ReactNode; ref?: any }) {
 		<div className="shell" ref={ref}>
 			{children}
 		</div>
-	);
-}
-
-function Login({ accounts, onLogin, onSwitch, compact = false }: { accounts: Account[]; onLogin: (account: Account) => void; onSwitch: (account: Account) => void; compact?: boolean }) {
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState("");
-
-	const submit = async (event: FormEvent) => {
-		event.preventDefault();
-		setLoading(true);
-		setError("");
-		try {
-			const token = (await invoke("login", { email, password })) as string;
-			const avatarColor = pickAvatarColor(email);
-			onLogin({ id: email, email, token, avatarColor });
-			setEmail("");
-			setPassword("");
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Login failed");
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	return (
-		<main className={compact ? "login compact-login" : "login"}>
-			<Brain size={compact ? 32 : 48} className="login-icon" />
-			<h2>Codex Everywhere</h2>
-			<p>Sign in to your account</p>
-			<form onSubmit={submit}>
-				<input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" type="email" />
-				<input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" type="password" />
-				{error && <div className="error">{error}</div>}
-				<button disabled={!email || !password || loading}>{loading ? "Signing In..." : "Sign In"}</button>
-			</form>
-			{accounts.length > 0 && (
-				<div className="switcher">
-					<span>Or switch account</span>
-					{accounts.map((account) => (
-						<button key={account.id} onClick={() => onSwitch(account)}>
-							<AccountAvatar email={account.email} color={account.avatarColor} size={16} />
-							{account.email}
-							<Check size={15} />
-						</button>
-					))}
-				</div>
-			)}
-		</main>
 	);
 }
 
@@ -536,23 +482,5 @@ function Metric({ label, value, sub, tone = "orange" }: { label: string; value: 
 			</div>
 			<em className="min-w-fit">{sub}</em>
 		</div>
-	);
-}
-
-function AccountAvatar({ email, color, size = 22 }: { email?: string; color: string; size?: number }) {
-	const background = color || pickAvatarColor(email ?? "");
-	return (
-		<span
-			className="account-avatar"
-			style={{
-				width: size,
-				height: size,
-				background,
-				color: avatarTextColor(background),
-				fontSize: Math.max(10, Math.floor(size * 0.5)),
-			}}
-			aria-hidden="true">
-			{userInitial(email ?? "")}
-		</span>
 	);
 }

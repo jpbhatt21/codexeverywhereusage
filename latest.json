@@ -1,0 +1,15 @@
+{
+	"version": "1.1.0",
+	"notes": "{}",
+	"pub_date": "2026-06-17T10:30:00Z",
+	"platforms": {
+		"windows-x86_64": {
+			"signature": "",
+			"url": "https://github.com/jpbhatt21/integrated-mod-manager/releases/latest/download/Integrated.Mod.Manager.IMM._1.1.0_x64-setup.exe"
+		},
+		"darwin-aarch64": {
+			"signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeUYyUCs0Q2xqM1NreVlpNWYyOXhjRGlRNlFYcVdiK2tUblB4RlpMS1VMZHlweU5TTnUrc2FxLy9QWnpPa1NvYlN1eGcxdzBmdGlFZ1ZhQVhrYkhObVZNWWxHMlVKWEFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxNzgyMjM2CWZpbGU6Q29kZXggRXZlcnl3aGVyZSBNb25pdG9yLmFwcC50YXIuZ3oKanRTYm1zQXJwMlp4WmQxY1dBTEpVeFA4cnFmeHFlb0E1cWJsUmNncGN0S1NYYThJdnIwVjd4L2d6cXpPQlpGOGpJc3VRcWpiTGthSXc0dWRJZW1FQkE9PQo=",
+			"url": "https://github.com/jpbhatt21/codexeverywhereusage/releases/latest/download/Codex.Everywhere.Monitor.app.tar.gz"
+		}
+	}
+}

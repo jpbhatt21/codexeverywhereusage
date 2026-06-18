@@ -156,14 +156,23 @@ struct DashboardPayload {
 #[tauri::command]
 async fn load_dashboard(token: String) -> Result<DashboardPayload, String> {
     let client = reqwest::Client::new();
-    let today = chrono::Local::now().date_naive().format("%Y-%m-%d").to_string();
+    let today = chrono::Local::now()
+        .date_naive()
+        .format("%Y-%m-%d")
+        .to_string();
     let start = (chrono::Local::now().date_naive() - chrono::Days::new(6))
         .format("%Y-%m-%d")
         .to_string();
 
-    let me = fetch_json::<MeResponse>(&client, "/auth/me", &token, &[("timezone", TIMEZONE)]).await?;
-    let stats =
-        fetch_json::<StatsResponse>(&client, "/usage/dashboard/stats", &token, &[("timezone", TIMEZONE)]).await?;
+    let me =
+        fetch_json::<MeResponse>(&client, "/auth/me", &token, &[("timezone", TIMEZONE)]).await?;
+    let stats = fetch_json::<StatsResponse>(
+        &client,
+        "/usage/dashboard/stats",
+        &token,
+        &[("timezone", TIMEZONE)],
+    )
+    .await?;
     let usage = fetch_json::<UsageResponse>(
         &client,
         "/usage",
@@ -224,7 +233,10 @@ fn position_popover<R: Runtime>(app: &AppHandle<R>, tray_rect: Option<Rect>) {
             icon_x + (icon_w - size.width as i32) / 2,
             icon_y + icon_h + margin,
         )
-    } else if let Ok(Some(monitor)) = window.current_monitor().or_else(|_| window.primary_monitor()) {
+    } else if let Ok(Some(monitor)) = window
+        .current_monitor()
+        .or_else(|_| window.primary_monitor())
+    {
         let monitor_pos = monitor.position();
         let monitor_size = monitor.size();
         (
@@ -236,7 +248,10 @@ fn position_popover<R: Runtime>(app: &AppHandle<R>, tray_rect: Option<Rect>) {
         return;
     };
 
-    if let Ok(Some(monitor)) = window.current_monitor().or_else(|_| window.primary_monitor()) {
+    if let Ok(Some(monitor)) = window
+        .current_monitor()
+        .or_else(|_| window.primary_monitor())
+    {
         let monitor_pos = monitor.position();
         let monitor_size = monitor.size();
         let min_x = monitor_pos.x + margin;
@@ -280,10 +295,12 @@ fn hide_window(app: AppHandle) {
         let _ = window.hide();
     }
 }
-use window_vibrancy::{apply_blur, apply_vibrancy, NSVisualEffectMaterial,apply_acrylic};
+use window_vibrancy::{apply_acrylic, apply_vibrancy, NSVisualEffectMaterial};
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
         .invoke_handler(tauri::generate_handler![hide_window, login, load_dashboard])
@@ -297,8 +314,7 @@ pub fn run() {
 
             // Apply blur/acrylic for Windows
             #[cfg(target_os = "windows")]
-            apply_acrylic(&window, Some((1, 1, 1, 100)))
-                .expect("Unsupported platform!");
+            apply_acrylic(&window, Some((1, 1, 1, 100))).expect("Unsupported platform!");
 
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
