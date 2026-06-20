@@ -114,6 +114,7 @@ export default function App() {
 		return cached?.currency === readCurrencyPreference() ? cached.rate : 1;
 	});
 	const [refreshing, setRefreshing] = useState(false);
+	const [loginHint, setLoginHint] = useState({ email: "", message: "" });
 	const [updateInfo, setUpdateInfo] = useState<UpdateInfo>({
 		version: "-",
 		currentVersion: "",
@@ -150,6 +151,21 @@ export default function App() {
 				};
 				setDashboard(next);
 				saveDashboardCache(next);
+			} catch (err) {
+				setLoginHint({ email: account.email, message: "Session expired. Please sign in again." });
+				setAccounts((current) => {
+					const next = current.filter((item) => item.id !== account.id);
+					saveAccounts(next);
+					return next;
+				});
+				setActiveAccount((current) => {
+					if (current?.id === account.id) {
+						saveActiveAccount(null);
+						return null;
+					}
+					return current;
+				});
+				setDashboard(emptyDashboard);
 			} finally {
 				setRefreshing(false);
 			}
@@ -230,12 +246,14 @@ export default function App() {
 	}, [currency]);
 
 	const setActive = (account: Account | null) => {
+		setLoginHint({ email: account?.email ?? "", message: "" });
 		setActiveAccount(account);
 		saveActiveAccount(account);
 		setAccountMenuOpen(false);
 	};
 
 	const addAccount = (account: Account) => {
+		setLoginHint({ email: "", message: "" });
 		const next = [...accounts.filter((item) => item.id !== account.id), account];
 		setAccounts(next);
 		saveAccounts(next);
@@ -284,7 +302,7 @@ export default function App() {
 	if (!isLoggedIn && !dashboard.email) {
 		return (
 			<div className="flex w-full h-full items-center justify-center p-4 fixed">
-				<Login accounts={accounts} onLogin={addAccount} onSwitch={setActive} updateInfo={updateInfo} />
+				<Login accounts={accounts} onLogin={addAccount} onSwitch={setActive} updateInfo={updateInfo} initialEmail={loginHint.email} message={loginHint.message} />
 			</div>
 		);
 	}
@@ -348,7 +366,7 @@ export default function App() {
 			</header>
 
 			{!isLoggedIn ? (
-				<Login accounts={accounts} onLogin={addAccount} onSwitch={setActive} compact updateInfo={updateInfo} />
+				<Login accounts={accounts} onLogin={addAccount} onSwitch={setActive} compact updateInfo={updateInfo} initialEmail={loginHint.email} message={loginHint.message} />
 			) : (
 				<main className="content w-full min-w-fit">
 					<section className="balance-card min-w-fit justify-between gap-2">

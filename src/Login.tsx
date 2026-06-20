@@ -1,14 +1,19 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Brain, Check } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { AccountAvatar, pickAvatarColor } from "./components/avatar";
 import type { Account, UpdateInfo } from "./types";
 
-function Login({ accounts, onLogin, onSwitch, compact = false, updateInfo }: { accounts: Account[]; onLogin: (account: Account) => void; onSwitch: (account: Account) => void; compact?: boolean, updateInfo:UpdateInfo }) {
-	const [email, setEmail] = useState("");
+function Login({ accounts, onLogin, onSwitch, compact = false, updateInfo, initialEmail = "", message = "" }: { accounts: Account[]; onLogin: (account: Account) => void; onSwitch: (account: Account) => void; compact?: boolean, updateInfo:UpdateInfo; initialEmail?: string; message?: string }) {
+	const [email, setEmail] = useState(initialEmail);
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState("");
+	const [error, setError] = useState(message);
+
+	useEffect(() => {
+		setEmail(initialEmail);
+		setError(message);
+	}, [initialEmail, message]);
 
 	const submit = async (event: FormEvent) => {
 		event.preventDefault();
